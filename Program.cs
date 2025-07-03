@@ -8,11 +8,14 @@ using Domain.Interfaces;
 using Infrastructure.Repositories;
 using Application.Services.Interfaces;
 using Application.Services.Implementations;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 🔐 Configuración de JWT
+// 🔐 JWT Settings (con protección contra valores nulos)
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var jwtKey = jwtSettings["Key"] ?? throw new InvalidOperationException("JWT Key no configurada.");
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -24,22 +27,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtSettings["Issuer"],
             ValidAudience = jwtSettings["Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
     });
 
-// 🧠 Inyección de dependencias
-builder.Services.AddScoped<IProductService, ProductService>();  
+// 💾 DB
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// 🧠 Dependencias
+builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 
-// 🔌 Conexión a SQL Server
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(connectionString));
-
-// 🧪 Swagger + Token Support
+// 🔐 Controladores, Swagger + Token
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -48,7 +50,7 @@ builder.Services.AddSwaggerGen(options =>
 
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
-        Description = "Token JWT (escribe 'Bearer {token}')",
+        Description = "Token JWT (usa: 'Bearer {tu_token}')",
         Name = "Authorization",
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
         Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
@@ -71,12 +73,19 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+// CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+        policy.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin());
+});
+
 var app = builder.Build();
 
-// 🌐 Middleware para permitir solo una IP específica
+// 🛡️ Middleware de IP autorizada
 app.Use(async (context, next) =>
 {
-    var allowedIp = "187.155.101.200"; // IP autorizada
+    var allowedIp = builder.Configuration["AllowedIP"];
     var remoteIp = context.Connection.RemoteIpAddress?.ToString();
 
     if (remoteIp != allowedIp)
@@ -89,17 +98,15 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// Middleware global
-app.UseMiddleware<ExceptionHandlingMiddleware>();
-
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
-app.UseAuthentication(); // 🛡️ IMPORTANTE
+app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
+app.MapControllers(); // 🔑 Necesario para habilitar el DevController
 
 app.Run();
+app.MapControllers(); // Necesario para que funcione el AuthController

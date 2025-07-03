@@ -4,50 +4,59 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace WebApi.Controllers
+namespace WebApi.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class AuthController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class AuthController : ControllerBase
+    private readonly IConfiguration _config;
+
+    public AuthController(IConfiguration config)
     {
-        private readonly IConfiguration _configuration;
+        _config = config;
+    }
 
-        public AuthController(IConfiguration configuration)
-        {
-            _configuration = configuration;
-        }
-
-        [HttpPost("login")]
-        public IActionResult Login([FromBody] LoginRequest request)
+    [HttpPost("login")]
+    public IActionResult Login([FromBody] LoginRequest request)
+    {
+        try
         {
             if (request.Username != "admin" || request.Password != "1234")
-                return Unauthorized(new { error = "Credenciales inválidas" });
+                return Unauthorized("Usuario o contraseña incorrectos");
 
-            var jwtSettings = _configuration.GetSection("JwtSettings");
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
+            var jwtSection = _config.GetSection("JwtSettings");
+
+            var keyString = jwtSection["Key"];
+            var issuer = jwtSection["Issuer"];
+            var audience = jwtSection["Audience"];
+
+            if (string.IsNullOrEmpty(keyString) || keyString.Length < 32)
+                return StatusCode(500, "La clave JWT no está configurada correctamente o es muy corta.");
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            var claims = new[]
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, request.Username),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-            };
-
             var token = new JwtSecurityToken(
-                issuer: jwtSettings["Issuer"],
-                audience: jwtSettings["Audience"],
-                claims: claims,
-                expires: DateTime.Now.AddMinutes(double.Parse(jwtSettings["DurationInMinutes"]!)),
+                issuer: issuer,
+                audience: audience,
+                claims: new[] { new Claim(ClaimTypes.Name, request.Username) },
+                expires: DateTime.UtcNow.AddHours(1),
                 signingCredentials: creds
             );
 
-            return Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token) });
+            var jwt = new JwtSecurityTokenHandler().WriteToken(token);
+            return Ok(new { token = jwt });
         }
-
-        public class LoginRequest
+        catch (Exception ex)
         {
-            public string Username { get; set; } = string.Empty;
-            public string Password { get; set; } = string.Empty;
+            return StatusCode(500, "Error interno al generar el token: " + ex.Message);
         }
     }
+}
+
+public class LoginRequest
+{
+    public string Username { get; set; } = default!;
+    public string Password { get; set; } = default!;
 }
