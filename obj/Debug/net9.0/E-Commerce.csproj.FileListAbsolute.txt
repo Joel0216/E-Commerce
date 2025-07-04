@@ -143,9 +143,9 @@ C:\Users\denic\E-Commerce\obj\Debug\net9.0\refint\E-Commerce.dll
 C:\Users\denic\E-Commerce\obj\Debug\net9.0\E-Commerce.pdb
 C:\Users\denic\E-Commerce\obj\Debug\net9.0\E-Commerce.genruntimeconfig.cache
 C:\Users\denic\E-Commerce\obj\Debug\net9.0\ref\E-Commerce.dll
-C:\Users\denic\E-Commerce\bin\Debug\net9.0\publish\web.config
-C:\Users\denic\E-Commerce\bin\Debug\net9.0\publish\appsettings.Development.json
-C:\Users\denic\E-Commerce\bin\Debug\net9.0\publish\appsettings.json
-C:\Users\denic\E-Commerce\bin\Debug\net9.0\publish\E-Commerce.deps.json
-C:\Users\denic\E-Commerce\bin\Debug\net9.0\publish\E-Commerce.runtimeconfig.json
-C:\Users\denic\E-Commerce\bin\Debug\net9.0\publish\E-Commerce.staticwebassets.endpoints.json
+C:\Users\denic\E-Commerce\bin\Debug\net9.0\PublicacionSomee\web.config
+C:\Users\denic\E-Commerce\bin\Debug\net9.0\PublicacionSomee\appsettings.Development.json
+C:\Users\denic\E-Commerce\bin\Debug\net9.0\PublicacionSomee\appsettings.json
+C:\Users\denic\E-Commerce\bin\Debug\net9.0\PublicacionSomee\E-Commerce.deps.json
+C:\Users\denic\E-Commerce\bin\Debug\net9.0\PublicacionSomee\E-Commerce.runtimeconfig.json
+C:\Users\denic\E-Commerce\bin\Debug\net9.0\PublicacionSomee\E-Commerce.staticwebassets.endpoints.json

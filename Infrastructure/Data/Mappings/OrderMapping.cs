@@ -8,12 +8,17 @@ namespace Infrastructure.Data.Mappings
     {
         public void Configure(EntityTypeBuilder<Order> builder)
         {
+            builder.ToTable("Orders");
             builder.HasKey(o => o.Id);
-            builder.Property(o => o.Status).IsRequired();
+            
+            builder.Property(o => o.Status)
+                   .IsRequired()
+                   .HasConversion<string>();
 
             builder.HasMany(o => o.OrderItems)
                    .WithOne(i => i.Order)
-                   .HasForeignKey(i => i.OrderId);
+                   .HasForeignKey(i => i.OrderId)
+                   .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

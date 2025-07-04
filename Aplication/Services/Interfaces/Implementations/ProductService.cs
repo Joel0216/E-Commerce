@@ -15,15 +15,40 @@ namespace Application.Services.Implementations
             _productRepository = productRepository;
         }
 
-        public async Task<List<ProductDto>> GetAllAsync()
+        public async Task<PaginatedResponseDto<ProductDto>> GetAllAsync(int page = 1, int pageSize = 25)
         {
-            var products = await _productRepository.GetAllAsync();
-            return products.Select(p => new ProductDto
+            // Validar parámetros de paginación
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 25;
+            if (pageSize > 25) pageSize = 25; // Máximo 25 elementos
+
+            var (products, totalCount) = await _productRepository.GetAllAsync(page, pageSize);
+            
+            var productDtos = products.Select(p => new ProductDto
             {
                 Id = p.Id,
                 Name = p.Name,
-                Price = p.Price
+                Price = p.Price,
+                Stock = p.Stock
             }).ToList();
+
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+            
+            var pagination = new PaginationDto
+            {
+                Page = page,
+                PageSize = pageSize,
+                TotalItems = totalCount,
+                TotalPages = totalPages,
+                HasNextPage = page < totalPages,
+                HasPreviousPage = page > 1
+            };
+
+            return new PaginatedResponseDto<ProductDto>
+            {
+                Items = productDtos,
+                Pagination = pagination
+            };
         }
 
         public async Task<ProductDto?> GetByIdAsync(int id)
@@ -35,7 +60,8 @@ namespace Application.Services.Implementations
             {
                 Id = product.Id,
                 Name = product.Name,
-                Price = product.Price
+                Price = product.Price,
+                Stock = product.Stock
             };
         }
 
@@ -45,10 +71,14 @@ namespace Application.Services.Implementations
             if (exists != null)
                 throw new BusinessException("Ya existe un producto con ese nombre.");
 
+            if (dto.Stock < 0)
+                throw new BusinessException("El stock no puede ser menor a 0.");
+
             var product = new Product
             {
                 Name = dto.Name,
-                Price = dto.Price
+                Price = dto.Price,
+                Stock = dto.Stock
             };
 
             await _productRepository.AddAsync(product);
@@ -59,8 +89,12 @@ namespace Application.Services.Implementations
             var product = await _productRepository.GetByIdAsync(id);
             if (product == null) throw new BusinessException("Producto no encontrado.");
 
+            if (dto.Stock < 0)
+                throw new BusinessException("El stock no puede ser menor a 0.");
+
             product.Name = dto.Name;
             product.Price = dto.Price;
+            product.Stock = dto.Stock;
 
             await _productRepository.UpdateAsync(product);
         }
@@ -74,6 +108,26 @@ namespace Application.Services.Implementations
             if (isInOrder) throw new BusinessException("No se puede eliminar un producto que ya fue usado en una orden.");
 
             await _productRepository.DeleteAsync(product);
+        }
+
+        public async Task<bool> HasEnoughStockAsync(int productId, int quantity)
+        {
+            var product = await _productRepository.GetByIdAsync(productId);
+            if (product == null) return false;
+            
+            return product.Stock >= quantity;
+        }
+
+        public async Task UpdateStockAsync(int productId, int quantity)
+        {
+            var product = await _productRepository.GetByIdAsync(productId);
+            if (product == null) throw new BusinessException("Producto no encontrado.");
+            
+            if (product.Stock < quantity)
+                throw new BusinessException($"Stock insuficiente. Disponible: {product.Stock}, Solicitado: {quantity}");
+            
+            product.Stock -= quantity;
+            await _productRepository.UpdateAsync(product);
         }
     }
 }

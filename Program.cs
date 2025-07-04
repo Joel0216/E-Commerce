@@ -73,7 +73,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// CORS
+// 🌐 CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -82,19 +82,53 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// 🌐 CORS antes del middleware
+app.UseCors("AllowAll");
+
 // 🛡️ Middleware de IP autorizada
 app.Use(async (context, next) =>
 {
     var allowedIp = builder.Configuration["AllowedIP"];
+    var environment = builder.Environment.EnvironmentName;
+    
+    // Obtener IP del cliente de múltiples fuentes
     var remoteIp = context.Connection.RemoteIpAddress?.ToString();
-
-    if (remoteIp != allowedIp)
+    var forwardedIp = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+    var realIp = context.Request.Headers["X-Real-IP"].FirstOrDefault();
+    
+    // Usar la IP más apropiada
+    var clientIp = realIp ?? forwardedIp ?? remoteIp ?? "unknown";
+    
+    // Log para debugging
+    Console.WriteLine($"🌐 IP del cliente: {clientIp}");
+    Console.WriteLine($"🔒 IP autorizada: {allowedIp}");
+    Console.WriteLine($"🏗️ Entorno: {environment}");
+    
+    // En desarrollo, permitir localhost
+    if (environment == "Development" && (clientIp == "127.0.0.1" || clientIp == "::1" || clientIp == "localhost"))
     {
+        Console.WriteLine("✅ Acceso permitido (desarrollo local)");
+        await next();
+        return;
+    }
+    
+    if (clientIp != allowedIp)
+    {
+        Console.WriteLine("❌ Acceso denegado - IP no autorizada");
         context.Response.StatusCode = 403;
-        await context.Response.WriteAsync("Acceso denegado: Tu IP no está autorizada.");
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new
+        {
+            Message = "Acceso denegado",
+            Error = "Tu IP no está autorizada para acceder a esta API",
+            YourIP = clientIp,
+            AllowedIP = allowedIp,
+            Environment = environment
+        });
         return;
     }
 
+    Console.WriteLine("✅ Acceso permitido");
     await next();
 });
 
@@ -106,7 +140,9 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers(); // 🔑 Necesario para habilitar el DevController
+// 🛡️ Middleware de manejo de excepciones
+app.UseMiddleware<WebApi.Middleware.ExceptionHandlingMiddleware>();
+
+app.MapControllers(); // ✅ Solo una vez
 
 app.Run();
-app.MapControllers(); // Necesario para que funcione el AuthController

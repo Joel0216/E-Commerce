@@ -1,0 +1,125 @@
+### Pruebas de Paginación y Validaciones de Pedidos - E-Commerce API
+
+### 1. Probar paginación de productos
+GET http://localhost:5021/api/products?page=1&pageSize=10
+
+### 2. Probar paginación con parámetros por defecto
+GET http://localhost:5021/api/products
+
+### 3. Probar paginación con máximo de elementos
+GET http://localhost:5021/api/products?page=1&pageSize=30
+# Debería limitar a 25 elementos
+
+### 4. Probar segunda página
+GET http://localhost:5021/api/products?page=2&pageSize=10
+
+### 5. Crear orden válida
+POST http://localhost:5021/api/orders
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "productId": 1,
+      "quantity": 5
+    },
+    {
+      "productId": 2,
+      "quantity": 3
+    }
+  ]
+}
+
+### 6. Crear orden con cantidad negativa (debería fallar)
+POST http://localhost:5021/api/orders
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "productId": 1,
+      "quantity": -5
+    }
+  ]
+}
+
+### 7. Crear orden con cantidad cero (debería fallar)
+POST http://localhost:5021/api/orders
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "productId": 1,
+      "quantity": 0
+    }
+  ]
+}
+
+### 8. Crear orden con stock insuficiente (debería fallar)
+POST http://localhost:5021/api/orders
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "productId": 1,
+      "quantity": 1000
+    }
+  ]
+}
+
+### 9. Crear orden con productos duplicados (debería fallar)
+POST http://localhost:5021/api/orders
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "productId": 1,
+      "quantity": 5
+    },
+    {
+      "productId": 1,
+      "quantity": 3
+    }
+  ]
+}
+
+### 10. Crear orden sin productos (debería fallar)
+POST http://localhost:5021/api/orders
+Content-Type: application/json
+
+{
+  "items": []
+}
+
+### 11. Agregar item a orden existente
+POST http://localhost:5021/api/orders/1/items
+Content-Type: application/json
+
+{
+  "productId": 3,
+  "quantity": 2
+}
+
+### 12. Agregar item con cantidad negativa (debería fallar)
+POST http://localhost:5021/api/orders/1/items
+Content-Type: application/json
+
+{
+  "productId": 3,
+  "quantity": -1
+}
+
+### 13. Listar todas las órdenes
+GET http://localhost:5021/api/orders
+
+### 14. Obtener producto específico
+GET http://localhost:5021/api/products/1
+
+### 15. Probar endpoint de prueba
+GET http://localhost:5021/api/test
+
+### 16. Probar conexión a base de datos
+GET http://localhost:5021/api/test/db 

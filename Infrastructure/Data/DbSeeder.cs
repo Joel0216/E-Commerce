@@ -7,50 +7,54 @@ public static class DbSeeder
 {
     public static void SeedDatabase(AppDbContext context)
     {
+        // Evita ejecutar si ya hay datos
         if (context.Products.Any() || context.Orders.Any() || context.OrderItems.Any())
             return;
 
         var rnd = new Random();
 
-        // 🔢 Listas para combinar nombres únicos
         string[] categorias = { "Artesanal", "Orgánico", "Tradicional", "Premium", "Natural", "Gourmet", "Rústico", "Ecológico" };
         string[] productos = { "Café", "Mezcal", "Miel", "Camisa", "Sombrero", "Chocolate", "Aretes", "Pulsera", "Taza", "Jabón", "Pan", "Queso" };
         string[] origenes = { "de Oaxaca", "de Yucatán", "de Chiapas", "del Bajío", "de Guerrero", "de Puebla", "de Michoacán", "de Veracruz" };
 
-        var products = new List<Product>();
         var usedNames = new HashSet<string>();
+        var productList = new List<Product>();
 
-        while (products.Count < 100)
+        while (productList.Count < 100)
         {
             string nombre = $"{categorias[rnd.Next(categorias.Length)]} {productos[rnd.Next(productos.Length)]} {origenes[rnd.Next(origenes.Length)]}";
 
             if (usedNames.Contains(nombre)) continue;
 
             usedNames.Add(nombre);
-            products.Add(new Product
+            productList.Add(new Product
             {
                 Name = nombre,
                 Price = Math.Round((decimal)(rnd.NextDouble() * 900 + 100), 2),
-                Stock = rnd.Next(5, 30)
+                Stock = 40
             });
         }
 
-        context.Products.AddRange(products);
+        context.Products.AddRange(productList);
         context.SaveChanges();
 
-        // 🟡 25 Órdenes
+        // Recuperar productos ya con IDs
+        var products = context.Products.ToList();
+
+        // Crear órdenes
         var orders = new List<Order>();
         for (int i = 1; i <= 25; i++)
         {
-            var status = i <= 9 ? Domain.Enums.OrderStatus.Pendiente :
-                        (i <= 17 ? Domain.Enums.OrderStatus.Pagado : Domain.Enums.OrderStatus.Enviado);
+            var status = i <= 9 ? Domain.Enums.OrderStatus.Pending :
+                         (i <= 17 ? Domain.Enums.OrderStatus.Paid : Domain.Enums.OrderStatus.Shipped);
 
             orders.Add(new Order { Status = status });
         }
+
         context.Orders.AddRange(orders);
         context.SaveChanges();
 
-        // 🔵 100 OrderItems
+        // Crear items de órdenes
         var orderItems = new List<OrderItem>();
         int totalItems = 0;
 
@@ -61,10 +65,13 @@ public static class DbSeeder
 
             for (int j = 0; j < itemCount && totalItems < 100; j++)
             {
+                Product product;
                 int productId;
+
                 do
                 {
-                    productId = products[rnd.Next(products.Count)].Id;
+                    product = products[rnd.Next(products.Count)];
+                    productId = product.Id;
                 } while (usedProductIds.Contains(productId));
 
                 usedProductIds.Add(productId);
@@ -73,7 +80,8 @@ public static class DbSeeder
                 {
                     OrderId = order.Id,
                     ProductId = productId,
-                    Quantity = rnd.Next(1, 6)
+                    Quantity = rnd.Next(1, 6),
+                    UnitPrice = product.Price
                 });
 
                 totalItems++;

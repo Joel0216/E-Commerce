@@ -22,10 +22,20 @@ namespace WebApi.Middleware
                 context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
                 await context.Response.WriteAsJsonAsync(new { error = ex.Message });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                await context.Response.WriteAsJsonAsync(new { error = "Error interno del servidor." });
+                context.Response.ContentType = "application/json";
+                
+                // Log del error para debugging
+                Console.WriteLine($"❌ Error 500: {ex.Message}");
+                Console.WriteLine($"📍 Stack Trace: {ex.StackTrace}");
+                
+                await context.Response.WriteAsJsonAsync(new { 
+                    error = "Error interno del servidor.",
+                    details = ex.Message,
+                    timestamp = DateTime.Now
+                });
             }
         }
     }

@@ -15,16 +15,24 @@ namespace Infrastructure.Repositories
             _context = context;
         }
 
+        public async Task AddAsync(Order order)
+        {
+            _context.Orders.Add(order);
+            await _context.SaveChangesAsync();
+        }
+
         public async Task<Order?> GetByIdAsync(int id)
         {
             return await _context.Orders
                 .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
                 .FirstOrDefaultAsync(o => o.Id == id);
         }
 
-        public async Task AddAsync(Order order)
+        public async Task AddItemAsync(int orderId, OrderItem item)
         {
-            _context.Orders.Add(order);
+            item.OrderId = orderId;
+            _context.OrderItems.Add(item);
             await _context.SaveChangesAsync();
         }
 
@@ -35,17 +43,18 @@ namespace Infrastructure.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public async Task AddItemAsync(int orderId, OrderItem item)
-        {
-            item.OrderId = orderId;
-            _context.OrderItems.Add(item);
-            await _context.SaveChangesAsync();
-        }
-
         public async Task<bool> IsOrderShippedAsync(int orderId)
         {
             var order = await _context.Orders.FindAsync(orderId);
-            return order != null && order.Status == OrderStatus.Enviado;
+            return order?.Status == OrderStatus.Shipped;
+        }
+
+        public async Task<IEnumerable<Order>> GetAllWithItemsAsync()
+        {
+            return await _context.Orders
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Product)
+                .ToListAsync();
         }
     }
 }

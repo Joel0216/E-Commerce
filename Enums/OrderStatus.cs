@@ -2,8 +2,8 @@ namespace Domain.Enums
 {
     public enum OrderStatus
     {
-        Pendiente,
-        Pagado,
-        Enviado
+        Pending,
+        Paid,
+        Shipped
     }
 }
